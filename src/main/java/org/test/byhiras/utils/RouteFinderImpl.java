@@ -64,11 +64,12 @@ public class RouteFinderImpl implements RouteFinder {
         return routes.get(0).getRoute();
     }
 
-    private void findAllRoutes(Station start, Station stop, Integer time, TubeLine currentLine, String route) {
+    @VisibleForTesting
+    void findAllRoutes(Station start, Station stop, Integer time, TubeLine currentLine, String route) {
         if (areNeighbours(start, stop)) {
-            boolean canContinueOnSameTubeLine = getBestConnection(start, stop, currentLine).equals(currentLine);
+            TubeLine newLine = getBestConnection(start, stop, currentLine);
             routes.add(
-                    new Route(time + calculateTime(canContinueOnSameTubeLine),  route + "," + getBestConnection(start, stop, currentLine).getName() + ", " + stop.getName())
+                    new Route(time + calculateTime(newLine, currentLine),  route + "," + stop.getName())
             );
         } else {
             start.getNeighbours().stream().filter(station -> !route.contains(station.getName())).forEach(station -> {
@@ -76,27 +77,29 @@ public class RouteFinderImpl implements RouteFinder {
                 findAllRoutes(
                         station,
                         stop,
-                        time + calculateTime(newLine.equals(currentLine)),
+                        time + calculateTime(newLine, currentLine),
                         newLine,
-                        route + "," + newLine.getName() + ", " + station.getName()
+                        route + "," + station.getName()
                 );
             });
         }
     }
 
-    private boolean areNeighbours(Station start, Station stop) {
+    @VisibleForTesting
+    boolean areNeighbours(Station start, Station stop) {
         return (start.getNeighbours().contains(stop));
     }
 
-    private Integer calculateTime(boolean canContinueOnSameTubeLine) {
-        if (canContinueOnSameTubeLine) {
+    private Integer calculateTime(TubeLine newLine, TubeLine currentLine) {
+        if (currentLine == null || newLine.equals(currentLine)) {
             return TRAVEL_TIME_BETWEEN_TWO_STOPS;
         } else {
             return TRANSFER_TIME_BETWEEN_TWO_TUBE_LINES + TRAVEL_TIME_BETWEEN_TWO_STOPS;
         }
     }
 
-    private TubeLine getBestConnection(Station start, Station stop, TubeLine currentLine) {
+    @VisibleForTesting
+    TubeLine getBestConnection(Station start, Station stop, TubeLine currentLine) {
         TubeLine result = null;
         for (TubeLine tubeLine : start.getTubeLines()) {
             if (stop.getTubeLines().contains(tubeLine)) {
